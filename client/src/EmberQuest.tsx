@@ -5,6 +5,7 @@ import { ART, CAMP, ENEMIES, ORES, PATHS, RARITIES, SAVE_KEY, beginBattle, enemy
 import './ember.css';
 
 const MUSIC_VOLUME_KEY = 'burger-orbit-map-music-volume-v1';
+const MISSION_COLLAPSED_KEY = 'burger-orbit-mission-collapsed-v1';
 const readMusicVolume = () => {
   try {
     const stored = localStorage.getItem(MUSIC_VOLUME_KEY);
@@ -12,6 +13,12 @@ const readMusicVolume = () => {
     const saved = Number(stored);
     return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : .45;
   } catch { return .45; }
+};
+const readMissionCollapsed = () => {
+  try {
+    const saved=localStorage.getItem(MISSION_COLLAPSED_KEY);
+    return saved===null ? window.innerWidth<=600 : saved==='1';
+  } catch { return window.innerWidth<=600; }
 };
 
 export function Portrait({ enemy, frame = 0, className = '' }: { enemy?: number; frame?: number; className?: string }) {
@@ -34,6 +41,7 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
   const [loot,setLoot] = useState<Loot|null>(null);
   const [taunt,setTaunt] = useState('');
   const [musicVolume,setMusicVolume] = useState(readMusicVolume);
+  const [missionCollapsed,setMissionCollapsed] = useState(readMissionCollapsed);
   const audio = useRef<AudioContext | null>(null), mapMusic = useRef<HTMLAudioElement | null>(null), reward = useRef<number | null>(null);
   const maxHp = maxHealth(score,progress), allClear = progress.defeated.length === 3;
   const heroTint = selected.bun?.id === 'charcoal' ? 0xc1c4ea : selected.bun?.id === 'brioche' ? 0xffe0aa : 0xffffff;
@@ -84,6 +92,9 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
     if (mapMusicPlaying) void player.play().catch(() => { /* The next click retries if autoplay is blocked. */ });
     else player.pause();
   }, [mapMusicPlaying, musicVolume]);
+  useEffect(()=>{
+    try { localStorage.setItem(MISSION_COLLAPSED_KEY,missionCollapsed?'1':'0'); } catch { /* The toggle still works without storage. */ }
+  },[missionCollapsed]);
   useEffect(() => {
     const resumeMusic = () => {
       if (mapMusicPlaying) void mapMusic.current?.play().catch(() => {});
@@ -154,9 +165,9 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
       <div className="ember-tools">{!battle&&<button onClick={()=>setCampOpen(true)}>◈ กระเป๋า / สาย</button>}{!battle&&<label className="ember-music-volume" title="ระดับเสียงเพลงแผนที่"><span>♫</span><input aria-label="ระดับเสียงเพลงแผนที่" type="range" min="0" max="100" step="5" value={Math.round(musicVolume*100)} onChange={event=>setMusicVolume(Number(event.target.value)/100)}/><output>{Math.round(musicVolume*100)}%</output></label>}<button aria-label={sound ? 'ปิดเสียงเอฟเฟกต์' : 'เปิดเสียงเอฟเฟกต์'} aria-pressed={sound} onClick={()=>setSound(v=>!v)}>{sound ? '♬ เอฟเฟกต์เปิด' : '♬ เอฟเฟกต์ปิด'}</button><button onClick={()=>setPaused(true)} aria-label="พักเกม">Ⅱ <span>เมนู</span></button></div>
     </header>
     {!battle && <>
-      <aside className="ember-mission"><small>THE EMBER GARDEN</small><h1>{allClear ? 'ผู้พิทักษ์สวนคนใหม่' : 'ปลุกไฟที่หลับใหล'}</h1><p>{objective}</p>
+      <aside className={`ember-mission ${missionCollapsed?'collapsed':''}`}><button className="ember-mission-toggle" aria-expanded={!missionCollapsed} aria-label={missionCollapsed?'เปิดรายละเอียดภารกิจ':'พับรายละเอียดภารกิจ'} onClick={()=>setMissionCollapsed(value=>!value)}>{missionCollapsed?'☷':'‹'}</button><div className="ember-mission-title"><span>✦</span><div><small>THE EMBER GARDEN</small><h1>{allClear ? 'ผู้พิทักษ์สวนคนใหม่' : 'ปลุกไฟที่หลับใหล'}</h1></div></div>{!missionCollapsed&&<div className="ember-mission-body"><p>{objective}</p>
         <div className="ember-seals">{ENEMIES.map(enemy=><span key={enemy.id} className={progress.defeated.includes(enemy.id)?'done':''}>{progress.defeated.includes(enemy.id)?'✓':enemy.id+1} <b>{enemy.name}</b></span>)}</div>
-        <div className="ember-collection">✧ ประกายเตาไฟ <b>{progress.collected.length} / 5</b></div>
+        <div className="ember-collection">✧ ประกายเตาไฟ <b>{progress.collected.length} / 5</b></div></div>}
       </aside>
       <aside className="ember-minimap" aria-label="แผนที่ย่อ"><div className="ember-map-image">{ENEMIES.filter(e=>progress.readyAt[e.id]<=Date.now()).map(e=><i key={e.id} className="foe-dot" style={{left:`${e.x/1536*100}%`,top:`${e.y/1024*100}%`}} />)}<i className="hero-dot" style={{left:`${position.x/1536*100}%`,top:`${position.y/1024*100}%`}} /></div><span>◆ คุณ <em>◆ ผู้พิทักษ์</em></span></aside>
       <div className={`ember-player-card tier-${tierOf(level)}`}><Portrait /><div><small>{path.icon} {path.role} · LV.{level}{level===20?' ★ MAX':''}</small><b>{name}</b><Health value={progress.hp} max={maxHp}/><p>{level===20?'MAX LEVEL':`${progress.xp-xpForLevel(level)} / ${xpForLevel(level+1)-xpForLevel(level)} XP`} <span>น้ำซุป {progress.potions}</span></p><p>◎ {progress.gold} <span>◆ {progress.stones} · ✧ {progress.essence}</span></p></div></div>

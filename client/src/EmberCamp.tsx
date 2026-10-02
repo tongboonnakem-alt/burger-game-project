@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { ScoreResult } from './types';
-import { ORES, PATHS, RARITIES, SHOP, advanceExpedition, attemptEnhancement, buyGear, enhancementChance, gearPower, heroAttack, improvePassive, improveSkill, levelOf, maxHealth, passivePoints, sellGear, skillCost, tierOf, upgradeCost, xpForLevel, type Gear, type Ore, type Progress } from './questModel';
+import { ART, ORES, PATHS, RARITIES, SHOP, advanceExpedition, attemptEnhancement, buyGear, enhancementChance, equipped, gearPower, heroAttack, improvePassive, improveSkill, levelOf, maxHealth, passivePoints, sellGear, skillCost, tierOf, upgradeCost, xpForLevel, type Gear, type Ore, type Progress } from './questModel';
 
 export function GearBadge({gear}:{gear?:Gear}) {
   const column=Math.max(0,PATHS.findIndex(path=>path.id===gear?.affinity));
@@ -54,6 +54,26 @@ function ForgePanel({gear,progress,onChange,onClose}:{gear:Gear;progress:Progres
     <aside className="ember-ore-vault"><header><div><b>คลังแร่</b><small>ค้นพบ {Object.values(progress.ores).filter(Boolean).length} / 100 ชนิด</small></div><span>ชั้น 1 ดรอปง่าย · ชั้น 10 หายากที่สุด</span></header><div>{owned.map(item=><button key={item.id} className={item.id===oreId?'selected':''} onClick={()=>{setOreId(item.id);setAmount(1);}}><OreIcon ore={item}/><span><b style={{color:item.color}}>{item.name}</b><small>{item.path==='universal'?'ใช้ได้ทุกสาย':PATHS.find(p=>p.id===item.path)?.role} · ระดับ {item.tier} · +{item.bonus}%</small></span><em>×{progress.ores[item.id]}</em></button>)}</div>{!owned.length&&<p>ยังไม่มีแร่ · ออกไปกำจัดมอนสเตอร์แล้วกลับมาใหม่</p>}</aside>
   </section>;
 }
+
+function BackpackOverview({progress:p,score}:{progress:Progress;score:ScoreResult}) {
+  const level=levelOf(p.xp),path=PATHS.find(item=>item.id===p.path)!;
+  const weapon=equipped(p,'weapon'),armor=equipped(p,'armor');
+  const owned=ORES.filter(ore=>(p.ores[ore.id]||0)>0).sort((a,b)=>b.tier-a.tier||a.path.localeCompare(b.path));
+  return <section className="ember-backpack-overview">
+    <div className="ember-avatar-panel">
+      <header><small>PROFILE</small><b>{path.icon} นักผจญภัยสาย{path.role}</b></header>
+      <div className="ember-avatar-stage"><div className="ember-bag-character" style={{backgroundImage:`url(${ART}hero.png)`}}/><span className={`ember-avatar-level tier-${tierOf(level)}`}>LV.{level}</span></div>
+      <div className="ember-equipped-slots"><article><GearBadge gear={weapon}/><div><small>อาวุธที่สวม</small><b>{weapon?.name||'ไม่มีอาวุธ'} +{weapon?.upgrade||0}</b><span>พลัง {gearPower(weapon)}</span></div></article><article><GearBadge gear={armor}/><div><small>เกราะที่สวม</small><b>{armor?.name||'ไม่มีเกราะ'} +{armor?.upgrade||0}</b><span>ลดดาเมจ {((gearPower(armor))*0.12).toFixed(1)}</span></div></article></div>
+      <div className="ember-avatar-stats"><span>⚔ <b>{heroAttack(score,p)}</b><small>โจมตี</small></span><span>♥ <b>{maxHealth(score,p)}</b><small>HP สูงสุด</small></span><span>★ <b>{p.kills}</b><small>ชัยชนะ</small></span></div>
+    </div>
+    <div className="ember-material-panel">
+      <header><div><small>BACKPACK</small><b>วัตถุดิบและทรัพย์สิน</b></div><span>{owned.length} / 100 แร่ที่ค้นพบ</span></header>
+      <div className="ember-resource-grid"><span>◎ <b>{p.gold}</b><small>เหรียญ</small></span><span>✧ <b>{p.essence}</b><small>ผลึกสกิล</small></span><span>◆ <b>{p.stones}</b><small>หินเวท</small></span><span>♨ <b>{p.potions}</b><small>น้ำซุป</small></span></div>
+      <div className="ember-material-title"><b>แร่จากมอนสเตอร์</b><small>แตะดูชื่อและจำนวน · ใช้เพิ่มโอกาสตีบวก</small></div>
+      <div className="ember-material-grid">{owned.map(ore=><div key={ore.id} title={`${ore.name} · ระดับ ${ore.tier}`}><OreIcon ore={ore}/><em>×{p.ores[ore.id]}</em><small style={{color:ore.color}}>{ore.tier}</small></div>)}{!owned.length&&<p>ยังไม่มีแร่ ออกไปกำจัดมอนสเตอร์เพื่อเก็บของ</p>}</div>
+    </div>
+  </section>;
+}
 export default function EmberCamp({progress:p,score,atCamp,onChange,onClose}:{progress:Progress;score:ScoreResult;atCamp:boolean;onChange:Dispatch<SetStateAction<Progress>>;onClose:()=>void}) {
   const [tab,setTab]=useState<'gear'|'skills'|'shop'|'rates'>('gear');
   const [forgeId,setForgeId]=useState<string|null>(null);
@@ -67,10 +87,10 @@ export default function EmberCamp({progress:p,score,atCamp,onChange,onClose}:{pr
     <header className="ember-camp-heading"><div><small>WARMHEARTH ADVENTURER SERVICE</small><h2>คลังนักผจญภัย</h2></div><span className="ember-window-seal">BO</span><button onClick={onClose} aria-label="ปิดกระเป๋า">×</button></header>
     <div className="ember-wallet"><span>◎ <b>{p.gold}</b> เหรียญ</span><span>◆ <b>{totalOres}</b> แร่ตีบวก</span><span>✧ <b>{p.essence}</b> ผลึกสกิล</span><span className={`ember-level tier-${tierOf(level)}`}>LV.{level}{level===20?' ★ MAX':' / 20'}</span></div>
     <div className="ember-camp-summary"><span style={{color:path.color}}>{path.icon} {path.role} · โจมตี {heroAttack(score,p)} · HP {maxHealth(score,p)}</span><span>{level===20?'ถึงขีดสุดแล้ว':`${p.xp-xpForLevel(level)} / ${xpForLevel(level+1)-xpForLevel(level)} XP`}</span></div>
-    <nav className="ember-camp-tabs" aria-label="หมวดพัฒนาตัวละคร">{([['gear','▣ กระเป๋า / ตีบวก'],['skills','✦ สาย / สกิล'],['shop','◎ ร้านค้า'],['rates','⚙ เรตดรอป']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}</button>)}</nav>
+    <nav className="ember-camp-tabs" aria-label="หมวดพัฒนาตัวละคร">{([['gear','▣ กระเป๋า'],['skills','✦ สาย / สกิล'],['shop','◎ ร้านค้า'],['rates','⚙ เรตดรอป']] as const).map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>setTab(id)}>{label}{id==='shop'&&!atCamp?<small>แคมป์</small>:null}</button>)}</nav>
     <div className={`ember-camp-content ${forgeGear?'has-forge':''}`}>
       {forgeGear?<ForgePanel gear={forgeGear} progress={p} onChange={onChange} onClose={()=>setForgeId(null)}/>:<>
-      {tab==='gear'&&<><div className="ember-panel-note"><b>คลังอุปกรณ์ {p.inventory.length} / 40</b><span>{atCamp?'เลือกอุปกรณ์แล้วใช้แร่จากมอนสเตอร์เพิ่มโอกาสสำเร็จ สูงสุด +20':'สวมใส่และขายได้ทุกที่ · กลับแคมป์เพื่อตีบวก'}</span></div><div className="ember-tier-legend"><span className="tier-wood">+5 ไม้</span><span className="tier-red">+10 แดง</span><span className="tier-violet">+15 ม่วง</span><span className="tier-gold">+20 ทอง ★</span></div>
+      {tab==='gear'&&<><BackpackOverview progress={p} score={score}/><div className="ember-panel-note ember-inventory-heading"><b>อุปกรณ์ในกระเป๋า {p.inventory.length} / 40</b><span>{atCamp?'สวมใส่ ขาย หรือเปิดเตาหลอมได้จากรายการด้านล่าง':'เปิดกระเป๋าและเปลี่ยนอุปกรณ์ได้ทุกที่ · การตีบวกใช้เตาหลอมที่แคมป์'}</span></div><div className="ember-tier-legend"><span className="tier-wood">+5 ไม้</span><span className="tier-red">+10 แดง</span><span className="tier-violet">+15 ม่วง</span><span className="tier-gold">+20 ทอง ★</span></div>
         <div className="ember-gear-grid">{p.inventory.map(gear=>{const wearing=p[gear.slot]===gear.id,rarity=RARITIES.find(r=>r.id===gear.rarity)!;return <article key={gear.id} className={`ember-gear-card rarity-${gear.rarity} tier-${tierOf(gear.upgrade)} ${wearing?'equipped':''}`}><GearBadge gear={gear}/><div><small style={{color:rarity.color}}>{rarity.name} · {gear.slot==='weapon'?'อาวุธ':'เกราะ'} {wearing?'· สวมใส่':''}</small><h3>{gear.name} <em>+{gear.upgrade}</em></h3><p>{gear.slot==='weapon'?`พลังอาวุธ ${gearPower(gear)} · สกิลตรงสาย +10%`:`เกราะลดดาเมจ ${(gearPower(gear)*.12).toFixed(1)}`}</p></div><div className="ember-item-actions"><button disabled={wearing} onClick={()=>onChange(current=>({...current,[gear.slot]:gear.id}))}>{wearing?'สวมอยู่':'สวมใส่'}</button><button disabled={!atCamp||gear.upgrade>=20} onClick={()=>setForgeId(gear.id)}>{gear.upgrade===20?'★ MAX':'เปิดเตาหลอม'}</button><button disabled={wearing} onClick={()=>onChange(current=>sellGear(current,gear.id))}>ขาย {rarity.sell+gear.upgrade*10} ◎</button></div></article>;})}</div>
       </>}
       {tab==='skills'&&<><div className="ember-panel-note"><b>พาสซีฟคงเหลือ {points} แต้ม</b><span>เลเวลตัวละครเพิ่ม = 1 แต้ม · เปลี่ยนสายฟรีที่แคมป์ · พาสซีฟทุกสายทำงานร่วมกัน</span></div><div className="ember-class-grid">{PATHS.map(c=>{const rank=p.skills[c.id],cost=skillCost(rank);return <article key={c.id} className={`ember-class-card ${p.path===c.id?'active':''}`} style={{'--class-color':c.color} as React.CSSProperties}><div className="ember-class-heading"><span>{c.icon}</span><div><small>{c.role}</small><h3>{c.name}</h3></div><button disabled={!atCamp||p.path===c.id} onClick={()=>onChange(current=>({...current,path:c.id}))}>{p.path===c.id?'สายปัจจุบัน':'เลือกสาย'}</button></div><div className={`ember-skill-rank tier-${tierOf(rank)}`}><b>{c.skill}</b><span>LV.{rank} {rank>=5?'★'.repeat(Math.floor(rank/5)):''}</span></div><p>{c.detail}</p><button className="ember-wide-button" disabled={rank>=20||rank>=level+4||p.gold<cost.gold||p.essence<cost.essence} onClick={()=>onChange(current=>improveSkill(current,c.id))}>{rank>=20?'★ สกิลสูงสุด':rank>=level+4?'เพิ่มเลเวลตัวละครเพื่ออัปต่อ':`อัปสกิล · ${cost.gold} ◎ + ${cost.essence} ✧`}</button><div className="ember-passive"><b>{c.passive} <span>{p.passives[c.id]} / 5</span></b><p>{c.benefit}</p><button disabled={points<=0||p.passives[c.id]>=5} onClick={()=>onChange(current=>improvePassive(current,c.id,score))}>อัปพาสซีฟ · 1 แต้ม</button></div></article>;})}</div></>}
