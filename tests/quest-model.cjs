@@ -32,7 +32,7 @@ async function run() {
   assert.equal(killingBlow.enemyHp, 0, 'Enemy HP never becomes negative');
   assert.equal(playerTurn({ ...battle, energy: 4 }, 'guard', score, fresh).energy, 4);
 
-  const { levelOf, xpForLevel, tierOf, grantVictory, improveGear, improveSkill, improvePassive, buyGear, sellGear, passivePoints, PATHS } = model;
+  const { levelOf, xpForLevel, tierOf, grantVictory, attemptEnhancement, enhancementChance, improveSkill, improvePassive, buyGear, sellGear, passivePoints, PATHS, ORES } = model;
   for (let level=1;level<=20;level++) {
     assert.equal(levelOf(xpForLevel(level)),level);
     if(level>1)assert.equal(levelOf(xpForLevel(level)-1),level-1);
@@ -55,6 +55,8 @@ async function run() {
   assert.equal(reward.progress.inventory.length,3);
   assert.equal(reward.progress.readyAt[0],26000);
   assert.equal(reward.progress.kills,1);
+  assert.equal(ORES.length,100,'Five ore families with ten tiers and two variants produce 100 ores');
+  assert.equal(reward.progress.ores[reward.loot.ore.id],(fresh.ores[reward.loot.ore.id]||0)+reward.loot.ore.amount);
   assert.ok(reward.progress.gold>fresh.gold&&reward.progress.stones>fresh.stones&&reward.progress.essence>fresh.essence);
   assert.equal(grantVictory({...fresh,rates:{equipment:0,weights:[55,27,13,4,1]}},winner,score,()=>0).loot.gear,undefined);
   assert.throws(()=>grantVictory(fresh,{...winner,phase:'lost'},score));
@@ -62,11 +64,15 @@ async function run() {
   const overflow=grantVictory(fullBag,winner,score,()=>.5);
   assert.equal(overflow.progress.inventory.length,40);assert.equal(overflow.loot.sold,true);
   assert.equal(grantVictory({...fresh,xp:xpForLevel(20)},winner,score).progress.xp,xpForLevel(20));
-  let funded={...fresh,gold:100000,stones:10000,essence:10000,xp:xpForLevel(20)};
-  for(let i=0;i<20;i++)funded=improveGear(funded,funded.weapon);
+  let funded={...fresh,gold:100000,stones:10000,essence:10000,xp:xpForLevel(20),ores:{...fresh.ores,'blade-10-1':100}};
+  for(let i=0;i<20;i++)funded=attemptEnhancement(funded,funded.weapon,'blade-10-1',1,()=>0).progress;
   assert.equal(funded.inventory[0].upgrade,20);
-  assert.equal(improveGear(funded,funded.weapon),funded,'Max enhancement does not consume currency');
-  assert.equal(improveGear({...fresh,gold:0},fresh.weapon).gold,0);
+  assert.equal(attemptEnhancement(funded,funded.weapon,'blade-10-1',1,()=>0).progress,funded,'Max enhancement does not consume currency');
+  assert.equal(attemptEnhancement({...fresh,gold:0},fresh.weapon,'blade-1-0',1,()=>0).progress.gold,0);
+  const risky={...fresh,gold:1000,ores:{...fresh.ores,'blade-1-0':10},inventory:fresh.inventory.map(item=>item.id===fresh.weapon?{...item,upgrade:10}:item)};
+  const failed=attemptEnhancement(risky,risky.weapon,'blade-1-0',2,()=>.999);
+  assert.equal(failed.success,false);assert.equal(failed.progress.inventory[0].upgrade,10);assert.equal(failed.progress.ores['blade-1-0'],8);
+  assert.ok(enhancementChance(risky.inventory[0],ORES.find(ore=>ore.id==='blade-10-1'),3)>enhancementChance(risky.inventory[0],ORES.find(ore=>ore.id==='blade-1-0'),1));
   for(let i=1;i<20;i++)funded=improveSkill(funded,'storm');
   assert.equal(funded.skills.storm,20);
   assert.equal(improveSkill(funded,'storm'),funded);

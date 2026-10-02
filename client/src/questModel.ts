@@ -25,20 +25,37 @@ export const RARITIES = [
 ] as const;
 export type Rarity = typeof RARITIES[number]['id'];
 export type Gear = { id: string; name: string; slot: 'weapon' | 'armor'; rarity: Rarity; upgrade: number; affinity: PathId };
+export type OrePath = PathId | 'universal';
+export type Ore = { id: string; name: string; path: OrePath; tier: number; variant: 0 | 1; bonus: number; color: string };
+export const ORE_FAMILIES: { path: OrePath; name: string; color: string }[] = [
+  {path:'blade',name:'โลหิตเหล็ก',color:'#ef654f'}, {path:'storm',name:'อัสนีคราม',color:'#68a8ff'},
+  {path:'life',name:'ชีวาพฤกษ์',color:'#78d77d'}, {path:'ward',name:'ศิลาม่วง',color:'#b77aef'},
+  {path:'universal',name:'ดาราสมบูรณ์',color:'#ffd56b'},
+];
+const ORE_TIERS = ['กรวด','หยาบ','ผลึก','เจียระไน','เรืองแสง','จารึก','ราชัน','มหากาพย์','เทวะ','ปฐมกาล'];
+export const ORES: Ore[] = ORE_FAMILIES.flatMap(family=>Array.from({length:10},(_,index)=>[0,1].map(variant=>{
+  const tier=index+1, pure=variant===1;
+  return {id:`${family.path}-${tier}-${variant}`,name:`${pure?'แก่น':'แร่'}${family.name}${ORE_TIERS[index]}`,path:family.path,tier,variant:variant as 0|1,bonus:Math.ceil(tier*.8)+(pure?2:0)+(family.path==='universal'?1:0),color:family.color};
+}))).flat();
 export type DropRates = { equipment: number; weights: number[] };
-export type Progress = { hp: number; potions: number; defeated: number[]; collected: number[]; xp: number; path: PathId; gold: number; stones: number; essence: number; floor: number; bossWins: number; kills: number; skills: Record<PathId, number>; passives: Record<PathId, number>; inventory: Gear[]; weapon: string; armor: string; readyAt: number[]; rates: DropRates };
+export type Progress = { hp: number; potions: number; defeated: number[]; collected: number[]; xp: number; path: PathId; gold: number; stones: number; essence: number; ores: Record<string,number>; floor: number; bossWins: number; kills: number; skills: Record<PathId, number>; passives: Record<PathId, number>; inventory: Gear[]; weapon: string; armor: string; readyAt: number[]; rates: DropRates };
 export const levelOf = (xp: number) => Math.min(20, 1 + Math.floor((Math.sqrt(10000 + 160 * Math.max(0, xp)) - 100) / 80));
 export const xpForLevel = (level: number) => 40 * (level - 1) ** 2 + 100 * (level - 1);
 export const tierOf = (level: number) => level >= 20 ? 'gold' : level >= 15 ? 'violet' : level >= 10 ? 'red' : level >= 5 ? 'wood' : 'plain';
 export const maxHealth = (score: ScoreResult, p?: Progress) => Math.round(104 + score.balance * .5 + (p ? (levelOf(p.xp) - 1) * 8 + p.passives.life * 12 : 0));
 export const attackPower = (score: ScoreResult) => Math.round(17 + score.taste * .1);
-export const initialProgress = (score: ScoreResult): Progress => ({ hp: maxHealth(score), potions: 3, defeated: [], collected: [], xp: 0, path: 'blade', gold: 60, stones: 3, essence: 0, floor: 1, bossWins: 0, kills: 0, skills: { blade: 1, storm: 1, life: 1, ward: 1 }, passives: { blade: 0, storm: 0, life: 0, ward: 0 }, inventory: [{ id:'starter-weapon',name:'ตะหลิวคู่ใจ',slot:'weapon',rarity:'common',upgrade:0,affinity:'blade' },{ id:'starter-armor',name:'ผ้ากันเปื้อนนักเดินทาง',slot:'armor',rarity:'common',upgrade:0,affinity:'ward' }], weapon:'starter-weapon',armor:'starter-armor',readyAt:[0,0,0],rates:{equipment:40,weights:[55,27,13,4,1]} });
+export const initialProgress = (score: ScoreResult): Progress => ({ hp: maxHealth(score), potions: 3, defeated: [], collected: [], xp: 0, path: 'blade', gold: 60, stones: 3, essence: 0, ores:{'blade-1-0':4,'universal-1-0':2}, floor: 1, bossWins: 0, kills: 0, skills: { blade: 1, storm: 1, life: 1, ward: 1 }, passives: { blade: 0, storm: 0, life: 0, ward: 0 }, inventory: [{ id:'starter-weapon',name:'ตะหลิวคู่ใจ',slot:'weapon',rarity:'common',upgrade:0,affinity:'blade' },{ id:'starter-armor',name:'ผ้ากันเปื้อนนักเดินทาง',slot:'armor',rarity:'common',upgrade:0,affinity:'ward' }], weapon:'starter-weapon',armor:'starter-armor',readyAt:[0,0,0],rates:{equipment:40,weights:[55,27,13,4,1]} });
 export const SAVE_KEY = 'burger-orbit-ember-garden-v2';
 export const gearPower = (g?: Gear) => g ? RARITIES.find(r=>r.id===g.rarity)!.power + g.upgrade * 4 : 0;
 export const equipped = (p: Progress, slot: 'weapon' | 'armor') => p.inventory.find(g=>g.id===p[slot]);
 export const heroAttack = (score: ScoreResult, p: Progress) => Math.round(attackPower(score) + (levelOf(p.xp)-1)*1.5 + gearPower(equipped(p,'weapon'))*.45 + p.passives.blade*4);
 export const passivePoints = (p: Progress) => levelOf(p.xp)-1-Object.values(p.passives).reduce((a,b)=>a+b,0);
-export const upgradeCost = (g: Gear) => ({ gold: 25 + g.upgrade * 15, stones: 1 + Math.floor(g.upgrade / 4) });
+export const ENHANCE_RATES = [100,100,100,100,90,80,70,60,50,40,34,28,23,19,15,12,9,7,5,3];
+export const upgradeCost = (g: Gear) => ({ gold: 40 + g.upgrade * 25 });
+export function enhancementChance(gear: Gear, ore: Ore, amount: number): number {
+  const affinity=ore.path==='universal'||ore.path===gear.affinity?1:.5;
+  return Math.min(100,Math.round(ENHANCE_RATES[gear.upgrade]+ore.bonus*Math.max(1,Math.min(3,amount))*affinity));
+}
 export const skillCost = (level: number) => ({ gold: 15 * level, essence: Math.ceil(level / 2) });
 export function readAdventure(): { profile: Profile; progress: Progress } | null {
   try {
@@ -48,10 +65,11 @@ export function readAdventure(): { profile: Profile; progress: Progress } | null
     if (!raw || !s || typeof data.profile.name !== 'string' || !data.profile.selected || !['SS+','S','A','B','C','D','F'].includes(s.rank) || typeof s.review!=='string' || !Number.isFinite(s.total) || !Number.isFinite(s.calories) || !Array.isArray(s.bonuses) || !s.bonuses.every((bonus:unknown)=>typeof bonus==='string') ||
       !['balance', 'taste', 'crispy', 'chaos'].every(k => typeof s[k] === 'number' && s[k] >= 0 && s[k] <= 100) ||
       !Number.isInteger(raw.xp) || raw.xp < 0) return null;
-    const p = { ...initialProgress(s), ...raw } as Progress;
+    const defaults=initialProgress(s);
+    const p = { ...defaults, ...raw, ores:{...defaults.ores,...(raw.ores||{})} } as Progress;
     if (!PATHS.some(c=>c.id===p.path) || !p.skills || !p.passives || !PATHS.every(c=>Number.isInteger(p.skills[c.id]) && p.skills[c.id]>=1 && p.skills[c.id]<=20 && Number.isInteger(p.passives[c.id]) && p.passives[c.id]>=0 && p.passives[c.id]<=5) || passivePoints(p)<0 ||
       !Number.isFinite(p.hp) || p.hp < 0 || p.hp > maxHealth(s,p) || !Number.isInteger(p.potions) || p.potions < 0 || p.potions > 9 ||
-      ![p.gold,p.stones,p.essence,p.bossWins,p.kills].every(n=>Number.isSafeInteger(n)&&n>=0) || !Number.isInteger(p.floor) || p.floor<1 || p.floor>20 ||
+      ![p.gold,p.stones,p.essence,p.bossWins,p.kills].every(n=>Number.isSafeInteger(n)&&n>=0) || !p.ores || !Object.entries(p.ores).every(([id,count])=>ORES.some(ore=>ore.id===id)&&Number.isSafeInteger(count)&&count>=0&&count<=999) || !Number.isInteger(p.floor) || p.floor<1 || p.floor>20 ||
       !Array.isArray(p.defeated) || !Array.isArray(p.collected) || new Set(p.defeated).size!==p.defeated.length || new Set(p.collected).size!==p.collected.length ||
       !p.defeated.every(n=>Number.isInteger(n)&&n>=0&&n<3) || !p.collected.every(n=>Number.isInteger(n)&&n>=0&&n<5) ||
       !Array.isArray(p.readyAt) || p.readyAt.length!==3 || !p.readyAt.every(n=>Number.isFinite(n)&&n>=0) ||
@@ -94,7 +112,7 @@ export function enemyTurn(b: Battle, score: ScoreResult, p?: Progress): Battle {
     log: hp === 0 ? 'ไฟในตัวดับลง… กลับไปพักที่แคมป์แล้วลองใหม่ได้' : `${ENEMIES[b.enemy].name}${charged ? ' ใช้ท่าไม้ตาย' : ' โจมตี'} −${damage} HP` };
 }
 
-export type Loot = { gold: number; stones: number; essence: number; xp: number; gear?: Gear; sold: boolean; levelUp: boolean };
+export type Loot = { gold: number; stones: number; essence: number; xp: number; ore: { id: string; amount: number }; gear?: Gear; sold: boolean; levelUp: boolean };
 export function createGear(slot: Gear['slot'], rarity: Rarity, affinity: PathId, id: string = crypto.randomUUID()): Gear {
   const names = { blade:'ตะหลิวคมเหล็ก',storm:'คทาสายฟ้า',life:'ช้อนพฤกษา',ward:'โล่กระทะ' };
   return { id, slot, rarity, affinity, upgrade:0, name:slot==='weapon' ? names[affinity] : 'เกราะรากเตาไฟ' };
@@ -102,7 +120,12 @@ export function createGear(slot: Gear['slot'], rarity: Rarity, affinity: PathId,
 export function grantVictory(p: Progress, b: Battle, score: ScoreResult, rng = Math.random, now = Date.now()): { progress: Progress; loot: Loot } {
   if (b.phase!=='won') throw new Error('Rewards require victory');
   const boss = b.enemy===2, scale = 1+(p.floor-1)*.3;
-  const loot: Loot = { gold:Math.round((boss?65:18+Math.floor(rng()*15))*scale),stones:boss?5:1+Math.floor(rng()*3),essence:boss?5:1+Math.floor(rng()*2),xp:b.rewardXp,sold:false,levelUp:false };
+  const maxOreTier=Math.min(10,Math.max(1,Math.ceil(p.floor/2)+(boss?2:0)));
+  const oreTier=Math.max(1,Math.ceil(rng()**2*maxOreTier));
+  const oreFamily=ORE_FAMILIES[Math.min(ORE_FAMILIES.length-1,Math.floor(rng()*ORE_FAMILIES.length))];
+  const oreVariant=(rng()<Math.max(.08,oreTier*.015)?1:0) as 0|1;
+  const ore=ORES.find(item=>item.path===oreFamily.path&&item.tier===oreTier&&item.variant===oreVariant)!;
+  const loot: Loot = { gold:Math.round((boss?65:18+Math.floor(rng()*15))*scale),stones:boss?5:1+Math.floor(rng()*3),essence:boss?5:1+Math.floor(rng()*2),ore:{id:ore.id,amount:boss?2:1},xp:b.rewardXp,sold:false,levelUp:false };
   if (rng()*100 < p.rates.equipment) {
     let roll = rng()*p.rates.weights.reduce((a,c)=>a+c,0), index=0;
     while (index<4 && roll>=p.rates.weights[index]) {roll-=p.rates.weights[index];index++;}
@@ -111,15 +134,18 @@ export function grantVictory(p: Progress, b: Battle, score: ScoreResult, rng = M
   }
   const xp=Math.min(xpForLevel(20),p.xp+loot.xp);
   loot.xp=xp-p.xp; loot.levelUp=levelOf(xp)>levelOf(p.xp);
-  const next: Progress = { ...p, xp, gold:p.gold+loot.gold, stones:p.stones+loot.stones, essence:p.essence+loot.essence, kills:p.kills+1, bossWins:p.bossWins+(boss?1:0), potions:Math.min(9,b.potions+1), defeated:[...new Set([...p.defeated,b.enemy])],readyAt:p.readyAt.map((value,id)=>id===b.enemy?now+(boss?60000:25000):value),inventory:loot.gear&&!loot.sold?[...p.inventory,loot.gear]:p.inventory };
+  const next: Progress = { ...p, xp, gold:p.gold+loot.gold, stones:p.stones+loot.stones, essence:p.essence+loot.essence, ores:{...p.ores,[ore.id]:(p.ores[ore.id]||0)+loot.ore.amount}, kills:p.kills+1, bossWins:p.bossWins+(boss?1:0), potions:Math.min(9,b.potions+1), defeated:[...new Set([...p.defeated,b.enemy])],readyAt:p.readyAt.map((value,id)=>id===b.enemy?now+(boss?60000:25000):value),inventory:loot.gear&&!loot.sold?[...p.inventory,loot.gear]:p.inventory };
   next.hp=loot.levelUp?maxHealth(score,next):Math.min(maxHealth(score,next),b.hp+22);
   return {progress:next,loot};
 }
-export function improveGear(p: Progress, id: string): Progress {
-  const gear=p.inventory.find(g=>g.id===id);
-  if (!gear||gear.upgrade>=20) return p;
-  const cost=upgradeCost(gear); if(p.gold<cost.gold||p.stones<cost.stones) return p;
-  return {...p,gold:p.gold-cost.gold,stones:p.stones-cost.stones,inventory:p.inventory.map(g=>g.id===id?{...g,upgrade:g.upgrade+1}:g)};
+export type EnhancementResult = { progress: Progress; attempted: boolean; success: boolean; chance: number };
+export function attemptEnhancement(p: Progress, id: string, oreId: string, amount: number, rng=Math.random): EnhancementResult {
+  const gear=p.inventory.find(g=>g.id===id),ore=ORES.find(item=>item.id===oreId),count=Math.max(1,Math.min(3,Math.floor(amount)));
+  if(!gear||!ore||gear.upgrade>=20||(p.ores[oreId]||0)<count)return {progress:p,attempted:false,success:false,chance:0};
+  const cost=upgradeCost(gear),chance=enhancementChance(gear,ore,count);
+  if(p.gold<cost.gold)return {progress:p,attempted:false,success:false,chance};
+  const success=rng()*100<chance;
+  return {attempted:true,success,chance,progress:{...p,gold:p.gold-cost.gold,ores:{...p.ores,[oreId]:p.ores[oreId]-count},inventory:success?p.inventory.map(item=>item.id===id?{...item,upgrade:item.upgrade+1}:item):p.inventory}};
 }
 export function improveSkill(p: Progress, path: PathId): Progress {
   const level=p.skills[path],cost=skillCost(level);

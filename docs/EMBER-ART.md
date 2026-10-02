@@ -11,6 +11,9 @@ All originals are preserved as generated in `client/public/quest-art/`. The game
 | `hero.png` | 1367 × 1151 | Four columns × four rows: down, left, right, up; four walking poses per direction |
 | `enemies.png` | 1448 × 1086 | Four columns × three rows: garlic knight, potato rogue, eggplant sorceress; idle, alternate idle, attack, hurt |
 | `arena.png` | 1672 × 941 | Side-view combat environment with clear foreground staging |
+| `forge-cat-throne.png` | 1536 × 1024 | ฉากเตาหลอมแดงดำ มีแมวขาวบนบัลลังก์และแท่นตีบวกตรงกลาง |
+| `equipment-atlas.png` | 1536 × 1024 | 4 คอลัมน์ × 2 แถว: อาวุธและเกราะของกายภาพ สายฟ้า ฮีล และป้องกัน |
+| `ore-atlas.png` | 1536 × 1024 | 5 คอลัมน์ × 10 แถว: แร่ 5 ตระกูล ไล่ความหายากระดับ 1–10 |
 
 ## Prompt set / reusable art briefs
 
@@ -26,6 +29,12 @@ The following briefs record the creative direction used for the four generation 
 
 **Arena:** A wide side-view battle stage inside the same underground kitchen ruins. A clear mossy stone foreground supports two opposing characters. Teal waterfalls and pools illuminate the left; an ancient orange-lit oven, iron cooking utensils, vines, and crystals illuminate the right. Depth and atmosphere in the background while the foreground stays readable. No characters, text, or interface baked in.
 
+**Cat throne forge:** A dark fantasy crimson-black forge chamber based on the user's tiny white cat throne reference. The cat sits above a centered volcanic stair and forge altar, with strong open areas reserved for interactive UI. Original game artwork, dramatic firelight, no baked text or controls.
+
+**Equipment atlas:** Eight isolated mystical burger-adventurer items on a neutral warm backdrop. Columns are physical, lightning, healing, and defense; the first row contains weapons and the second contains armor. Strong silhouettes, consistent three-quarter light, red/blue/green/purple accents, no text.
+
+**Ore atlas:** Fifty centered ore icons arranged as five color-coded families and ten ascending tiers. Rows evolve from rough stone into increasingly intricate crystal clusters; columns are physical red, lightning blue, healing green, defense purple, and universal gold. Uniform cells, no labels, coherent icon lighting.
+
 ## Integration
 
 - Phaser draws the environment, directional animations, contact shadows, encounter rings, collectibles, and drifting light motes.
@@ -34,3 +43,4 @@ The following briefs record the creative direction used for the four generation 
 - Reduced-motion preferences suppress decorative motion. Sound effects are synthesized locally and opt-in.
 - The garden contains two respawning guardians, one gated respawning boss, five collectibles per expedition, a camp shop and upgrade bench, and 20 expedition difficulty levels. The original builder-to-exploration-to-turn-based-battle loop is preserved.
 - Character levels, skill levels, and equipment enhancements use wood/red/violet/gold milestone frames at 5/10/15/20. The world adds a matching aura and footstep particles; combat uses the selected path's color and skill icon.
+- The cat-throne forge combines the three new generated assets with live percentages, three catalyst sockets, ore affinity bonuses, and spark/success/failure effects. All numbers and item names remain real UI text rather than being baked into the images.
