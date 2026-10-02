@@ -33,3 +33,7 @@ Check each source’s current license and attribution terms before any commercia
   https://kenney.nl/assets/ui-pack
 
 สำเนาใบอนุญาตต้นฉบับอยู่ที่ `client/public/kenney/rpg/License.txt` และ `client/public/kenney/ui/License.txt`
+
+## เพลงประกอบที่ผู้ใช้ให้มา
+
+- `client/public/audio/glorious-morning.mp3` — สำเนาจากไฟล์ `Glorious Morning (1).mp3` ที่ผู้ใช้ส่งมา ใช้เฉพาะช่วงสำรวจแผนที่ และหยุดเมื่อเข้าสู่ฉากต่อสู้ ร้านค้า เมนูพัก หรือห้องสร้างเบอร์เกอร์

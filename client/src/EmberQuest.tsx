@@ -4,6 +4,16 @@ import EmberCamp, { GearBadge } from './EmberCamp';
 import { ART, CAMP, ENEMIES, PATHS, RARITIES, SAVE_KEY, beginBattle, enemyTurn, equipped, grantVictory, heroAttack, initialProgress, levelOf, maxHealth, playerTurn, readAdventure, tierOf, xpForLevel, type Action, type Battle, type Loot, type Profile, type Progress } from './questModel';
 import './ember.css';
 
+const MUSIC_VOLUME_KEY = 'burger-orbit-map-music-volume-v1';
+const readMusicVolume = () => {
+  try {
+    const stored = localStorage.getItem(MUSIC_VOLUME_KEY);
+    if (stored === null) return .45;
+    const saved = Number(stored);
+    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : .45;
+  } catch { return .45; }
+};
+
 export function Portrait({ enemy, frame = 0, className = '' }: { enemy?: number; frame?: number; className?: string }) {
   const isHero = enemy === undefined;
   return <div aria-hidden="true" className={`ember-sprite ${isHero ? 'hero' : 'enemy'} ${className}`} style={{ backgroundImage: `url(${ART}${isHero ? 'hero' : 'enemies'}.png)`, backgroundSize: `400% ${isHero ? '400%' : '300%'}`, backgroundPosition: `${frame * 100 / 3}% ${isHero ? 0 : enemy! * 50}%` }} />;
@@ -22,13 +32,15 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
   const [saved, setSaved] = useState(true);
   const [campOpen,setCampOpen] = useState(false), [running,setRunning] = useState(false);
   const [loot,setLoot] = useState<Loot|null>(null);
-  const audio = useRef<AudioContext | null>(null), reward = useRef<number | null>(null);
+  const [musicVolume,setMusicVolume] = useState(readMusicVolume);
+  const audio = useRef<AudioContext | null>(null), mapMusic = useRef<HTMLAudioElement | null>(null), reward = useRef<number | null>(null);
   const maxHp = maxHealth(score,progress), allClear = progress.defeated.length === 3;
   const heroTint = selected.bun?.id === 'charcoal' ? 0xc1c4ea : selected.bun?.id === 'brioche' ? 0xffe0aa : 0xffffff;
   const heroFilter = selected.bun?.id === 'charcoal' ? 'saturate(.45) hue-rotate(180deg)' : 'brightness(1)';
   const level = levelOf(progress.xp), path = PATHS.find(c=>c.id===progress.path)!;
   const atCamp = Math.hypot(position.x - CAMP.x, position.y - CAMP.y) < 90;
   const suspended = intro || paused || campOpen || !!battle;
+  const mapMusicPlaying = !intro && !paused && !campOpen && !battle && musicVolume > 0;
   const notify = (text: string) => setToast(text);
   const chime = (type: 'hit' | 'heal' | 'win' | 'click') => {
     if (!sound) return;
@@ -46,6 +58,21 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
     } catch { /* Sound is optional when the browser blocks audio. */ }
   };
   useEffect(() => () => { void audio.current?.close(); }, []);
+  useEffect(() => {
+    const player = mapMusic.current;
+    if (!player) return;
+    player.volume = musicVolume;
+    try { localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume)); } catch { /* Volume still works without storage. */ }
+    if (mapMusicPlaying) void player.play().catch(() => { /* The next click retries if autoplay is blocked. */ });
+    else player.pause();
+  }, [mapMusicPlaying, musicVolume]);
+  useEffect(() => {
+    const resumeMusic = () => {
+      if (mapMusicPlaying) void mapMusic.current?.play().catch(() => {});
+    };
+    window.addEventListener('pointerdown', resumeMusic);
+    return () => window.removeEventListener('pointerdown', resumeMusic);
+  }, [mapMusicPlaying]);
   useEffect(() => {
     const original = document.body.style.overflow; document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = original; };
@@ -100,12 +127,13 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
   const objective = allClear ? 'กลับแคมป์เพื่อเปิดรอบที่ยากขึ้น หรือฟาร์มอุปกรณ์ต่อ' : progress.defeated.includes(0)&&progress.defeated.includes(1) ? 'ผนึกราชินีเปิดแล้ว · ไปยังครัวด้านบนขวา' : 'ปราบผู้พิทักษ์ทั้งสองเพื่อเปิดผนึกราชินี';
   const foe = battle ? ENEMIES[battle.enemy] : null;
   return <main className={`ember-game path-${progress.path} ${battle ? 'in-battle' : ''}`} style={{ '--hero-filter': heroFilter,'--class-color':path.color,'--skill-glow':`${18+progress.skills[progress.path]*3}px` } as CSSProperties}>
+    <audio ref={mapMusic} src="/audio/glorious-morning.mp3" loop preload="auto" />
     <EmberWorld key={progress.floor} progress={progress} suspended={suspended} respawn={respawn} tint={heroTint} running={running} onRun={()=>setRunning(v=>!v)} onCollect={collect} onPosition={setPosition} onNotice={notify}
       onEncounter={id => { if (suspended || progress.readyAt[id]>Date.now()) return; reward.current=null;setLoot(null); setBattle(beginBattle(id, progress)); chime('click'); }} />
     <div className="ember-vignette" />
     <header className="ember-top">
       <div className="ember-brand"><span className="ember-emblem">✦</span><div><small>BURGER ORBIT</small><b>สวนเตาไฟ</b></div><span className="ember-chapter">รอบสำรวจ {progress.floor}</span></div>
-      <div className="ember-tools">{!battle&&<button onClick={()=>setCampOpen(true)}>◈ กระเป๋า / สาย</button>}<button aria-label={sound ? 'ปิดเสียง' : 'เปิดเสียง'} aria-pressed={sound} onClick={()=>setSound(v=>!v)}>{sound ? '♪ เสียงเปิด' : '♪ เสียงปิด'}</button><button onClick={()=>setPaused(true)} aria-label="พักเกม">Ⅱ <span>เมนู</span></button></div>
+      <div className="ember-tools">{!battle&&<button onClick={()=>setCampOpen(true)}>◈ กระเป๋า / สาย</button>}{!battle&&<label className="ember-music-volume" title="ระดับเสียงเพลงแผนที่"><span>♫</span><input aria-label="ระดับเสียงเพลงแผนที่" type="range" min="0" max="100" step="5" value={Math.round(musicVolume*100)} onChange={event=>setMusicVolume(Number(event.target.value)/100)}/><output>{Math.round(musicVolume*100)}%</output></label>}<button aria-label={sound ? 'ปิดเสียงเอฟเฟกต์' : 'เปิดเสียงเอฟเฟกต์'} aria-pressed={sound} onClick={()=>setSound(v=>!v)}>{sound ? '♬ เอฟเฟกต์เปิด' : '♬ เอฟเฟกต์ปิด'}</button><button onClick={()=>setPaused(true)} aria-label="พักเกม">Ⅱ <span>เมนู</span></button></div>
     </header>
     {!battle && <>
       <aside className="ember-mission"><small>THE EMBER GARDEN</small><h1>{allClear ? 'ผู้พิทักษ์สวนคนใหม่' : 'ปลุกไฟที่หลับใหล'}</h1><p>{objective}</p>
