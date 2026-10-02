@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
-import { ART, CAMP, CRYSTALS, ENEMIES, ROUTES, canWalk, levelOf, type Progress } from './questModel';
+import { ART, CAMP, CRYSTALS, ENEMIES, canWalk, levelOf, type Progress } from './questModel';
 type Point = { x: number; y: number };
 type Props = {
   progress: Progress; suspended: boolean; respawn: number; tint: number;
@@ -53,8 +53,6 @@ export default function EmberWorld(props: Props) {
       hero!: Phaser.GameObjects.Sprite;
       shadow!: Phaser.GameObjects.Ellipse;
       aura!: Phaser.GameObjects.Ellipse;
-      routeGuide!: Phaser.GameObjects.Graphics;
-      goalMarker!: Phaser.GameObjects.Ellipse;
       cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
       keys!: Record<string, Phaser.Input.Keyboard.Key>;
       destination: Point[] = [];
@@ -66,7 +64,7 @@ export default function EmberWorld(props: Props) {
       lastRespawn = -1; blocked = false; cooldown = 0; lastReport = 0; lastDust = 0; direction = 'down'; stuckFor = 0;
       constructor() { super('EmberGarden'); }
       preload() {
-        this.load.image('garden', ART + 'garden.png');
+        this.load.image('garden', ART + 'garden-v2.png');
         this.load.image('hero', ART + 'hero.png');
         this.load.image('foes', ART + 'enemies.png');
         this.load.image('arena', ART + 'arena.png');
@@ -83,17 +81,6 @@ export default function EmberWorld(props: Props) {
         };
         addFrames('hero', 4, 4); addFrames('foes', 4, 3);
         this.add.image(0, 0, 'garden').setOrigin(0).setDisplaySize(1536, 1024);
-        const roadGuide=this.add.graphics().setDepth(1);
-        ROUTES.forEach(route=>{
-          const points=[] as Point[];
-          for(let i=0;i<route.length;i+=2)points.push({x:route[i],y:route[i+1]});
-          const vectors=points.map(point=>new Phaser.Math.Vector2(point.x,point.y));
-          roadGuide.lineStyle(13,0x071a12,.24).strokePoints(vectors,false);
-          roadGuide.lineStyle(3,0xf6d68b,.42).strokePoints(vectors,false);
-          points.forEach((point,index)=>{if(index>0&&index<points.length-1)roadGuide.fillStyle(0xffd98b,.5).fillCircle(point.x,point.y,2.5);});
-        });
-        this.routeGuide=this.add.graphics().setDepth(1900);
-        this.goalMarker=this.add.ellipse(CAMP.x,CAMP.y,24,11,0xffd37a,.12).setStrokeStyle(2,0xffe3a4,.9).setDepth(1901).setVisible(false);
         ['down','left','right','up'].forEach((direction, row) => this.anims.create({ key: direction, frames: this.anims.generateFrameNumbers('hero', { start: row * 4, end: row * 4 + 3 }), frameRate: 8, repeat: -1 }));
         ENEMIES.forEach((enemy, id) => {
           const shadow = this.add.ellipse(0, 2, 49, 15, 0x07130d, .5);
@@ -128,9 +115,7 @@ export default function EmberWorld(props: Props) {
           this.destination = findPath(this.hero, p);
           const end = this.destination[this.destination.length - 1];
           this.goal=end||null; this.stuckFor=0;
-          if (end) {
-            this.goalMarker.setPosition(end.x,end.y).setVisible(true).setAlpha(1);
-          } else latest.current.onNotice('แตะบนเส้นทางสีทองเพื่อเดินทาง');
+          if (!end) latest.current.onNotice('เลือกจุดบนถนนดินเพื่อเดินทาง');
         });
         if (!reducedMotion) for (let i = 0; i < 38; i++) {
           const mote = this.add.circle(Phaser.Math.Between(110,1440), Phaser.Math.Between(90,970), i % 3 ? 1 : 2, i % 2 ? 0xe3ef99 : 0xffb962, .6).setDepth(1900);
@@ -144,15 +129,15 @@ export default function EmberWorld(props: Props) {
         const level=levelOf(progress.xp),bossOpen=progress.defeated.includes(0)&&progress.defeated.includes(1);
         this.foes.forEach((foe, id) => foe.setVisible(progress.readyAt[id]<=Date.now()).setAlpha(id===2&&!bossOpen ? .55 : 1));
         this.shards.forEach((shard, id) => shard.setVisible(!progress.collected.includes(id)));
-        if (respawn !== this.lastRespawn) { this.lastRespawn = respawn; this.hero.setPosition(CAMP.x, CAMP.y); this.destination = []; this.goal=null; this.routeGuide.clear(); this.goalMarker.setVisible(false); this.cooldown = time + 1500; }
-        if (suspended) { this.hero.anims.stop(); held.current = null; this.blocked = true; this.destination = []; this.goal=null; this.routeGuide.clear(); this.goalMarker.setVisible(false); return; }
+        if (respawn !== this.lastRespawn) { this.lastRespawn = respawn; this.hero.setPosition(CAMP.x, CAMP.y); this.destination = []; this.goal=null; this.cooldown = time + 1500; }
+        if (suspended) { this.hero.anims.stop(); held.current = null; this.blocked = true; this.destination = []; this.goal=null; return; }
         if (this.blocked) { this.blocked = false; this.cooldown = time + 1800; this.encountered=ENEMIES.find(e=>Math.hypot(e.x-this.hero.x,e.y-this.hero.y)<65)?.id??null; }
         let dx = Number(this.cursors.right.isDown || this.keys.D.isDown || held.current === 'right') - Number(this.cursors.left.isDown || this.keys.A.isDown || held.current === 'left');
         let dy = Number(this.cursors.down.isDown || this.keys.S.isDown || held.current === 'down') - Number(this.cursors.up.isDown || this.keys.W.isDown || held.current === 'up');
-        if (dx || dy) { this.destination = [];this.goal=null;this.routeGuide.clear();this.goalMarker.setVisible(false); }
+        if (dx || dy) { this.destination = [];this.goal=null; }
         else if (this.destination.length) {
           const target = this.destination[0]; dx = target.x - this.hero.x; dy = target.y - this.hero.y;
-          if (Math.hypot(dx,dy) < 7) { this.destination.shift();const next=this.destination[0];dx=next?next.x-this.hero.x:0;dy=next?next.y-this.hero.y:0;if(!next){this.goal=null;this.routeGuide.clear();this.goalMarker.setVisible(false);} }
+          if (Math.hypot(dx,dy) < 7) { this.destination.shift();const next=this.destination[0];dx=next?next.x-this.hero.x:0;dy=next?next.y-this.hero.y:0;if(!next)this.goal=null; }
         }
         const sprint=latest.current.running||this.keys.SHIFT.isDown;
         const length = Math.hypot(dx,dy), amount = Math.min(Math.min(delta, 40) * (sprint ? .235 : .155),this.destination.length?length:Infinity);
@@ -164,7 +149,6 @@ export default function EmberWorld(props: Props) {
           if(!moved){const x=beforeX+dx/length*amount,y=beforeY+dy/length*amount;if(canWalk(x,beforeY)){this.hero.x=x;moved=true;}if(canWalk(this.hero.x,y)){this.hero.y=y;moved=true;}}
           if(this.destination.length&&Math.hypot(this.hero.x-beforeX,this.hero.y-beforeY)<.2)this.stuckFor+=delta;else this.stuckFor=0;
           if(this.stuckFor>320&&this.goal){this.destination=findPath(this.hero,this.goal);this.stuckFor=0;latest.current.onNotice('ปรับเส้นทางให้อัตโนมัติแล้ว');}
-          if(this.destination.length){const vectors=[new Phaser.Math.Vector2(this.hero.x,this.hero.y),...this.destination.map(point=>new Phaser.Math.Vector2(point.x,point.y))];this.routeGuide.clear().lineStyle(8,0x081b13,.5).strokePoints(vectors,false).lineStyle(2,0xffdf92,.9).strokePoints(vectors,false);}
           this.direction = Math.abs(dx) > Math.abs(dy) ? dx < 0 ? 'left' : 'right' : dy < 0 ? 'up' : 'down';
           this.hero.play(this.direction, true);
           this.hero.anims.timeScale=sprint?1.5:1;
@@ -187,7 +171,7 @@ export default function EmberWorld(props: Props) {
           const enemy = ENEMIES.find(e => e.id!==this.encountered && progress.readyAt[e.id]<=Date.now() && Math.hypot(e.x-this.hero.x,e.y-this.hero.y) < 40);
           if (enemy) {
             this.encountered=enemy.id;
-            this.cooldown = time + 3000; this.destination = []; this.goal=null; this.routeGuide.clear(); this.goalMarker.setVisible(false);
+            this.cooldown = time + 3000; this.destination = []; this.goal=null;
             if (enemy.id === 2 && !bossOpen) latest.current.onNotice('ปราบผู้พิทักษ์ทั้งสองเพื่อปลดผนึกราชินี');
             else latest.current.onEncounter(enemy.id);
           }

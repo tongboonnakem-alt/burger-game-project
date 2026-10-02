@@ -6,7 +6,8 @@ All originals are preserved as generated in `client/public/quest-art/`. The game
 
 | File | Dimensions | Use |
 | --- | --- | --- |
-| `garden.png` | 1536 × 1024 | Traversable illustrated garden; coordinates and collision corridors in `questModel.ts` |
+| `garden-v2.png` | 1536 × 1024 | แผนที่ใช้งานปัจจุบัน ถนนดินกว้างเป็นวง น้ำอยู่นอกเขตเดิน และพิกัดชนตรงกับ `questModel.ts` |
+| `garden.png` | 1536 × 1024 | แผนที่เวอร์ชันแรก เก็บไว้เป็นต้นฉบับอ้างอิงและไม่ได้โหลดในเกมแล้ว |
 | `hero.png` | 1367 × 1151 | Four columns × four rows: down, left, right, up; four walking poses per direction |
 | `enemies.png` | 1448 × 1086 | Four columns × three rows: garlic knight, potato rogue, eggplant sorceress; idle, alternate idle, attack, hurt |
 | `arena.png` | 1672 × 941 | Side-view combat environment with clear foreground staging |
@@ -17,7 +18,7 @@ The following briefs record the creative direction used for the four generation 
 
 **Shared direction:** Original cohesive 2D pixel fantasy adventure set in an underground kitchen garden. Detailed hand-painted pixel clusters, consistent three-quarter lighting, moss-green stone ruins, glowing teal water, warm amber fire and crystals, lime mushrooms. Charming food adventurers with readable silhouettes. No photorealistic collage, text, UI, logos, or imitation of an existing game's characters.
 
-**Garden:** A wide top-down three-quarter game map of an underground kitchen sanctuary. Connected ochre paths and wooden bridges weave around turquoise pools and waterfalls. A circular ancient oven shrine occupies the center; the bottom camp has a tent, crates, and a warm fire. Leave clear walking corridors around the shrine, an upper-right boss area, and distinct landmarks. No characters or interface baked into the environment.
+**Garden v2:** A wide top-down three-quarter underground kitchen sanctuary rebuilt around a broad, continuous ochre road loop. The camp sits at bottom center, the oven plaza in the middle, two guardians on opposite sides, and the boss courtyard at upper right. Water remains outside the road network and crossings use aligned bridges. No characters, route overlays, labels, or interface baked into the environment.
 
 **Hero:** A transparent sprite sheet of one expressive hamburger adventurer with a toasted sesame bun, lettuce, cheese, patty, small boots, lime scarf, and a spatula. Four equal columns and four equal rows; rows face down, left, right, and up. Each row contains four coordinated walking poses. Consistent character size, centered placement, lighting, and palette across all cells; enough transparent padding to prevent neighboring frames from bleeding.
 
@@ -27,8 +28,8 @@ The following briefs record the creative direction used for the four generation 
 
 ## Integration
 
-- Phaser draws the environment, directional animations, contact shadows, encounter rings, collectibles, target markers, and drifting light motes.
-- Collision corridors follow the illustrated ground and bridges. A small pathfinder supports click/tap movement without crossing water.
+- Phaser draws the environment, directional animations, contact shadows, encounter rings, collectibles, and drifting light motes.
+- Collision corridors follow the center of the broad illustrated roads. A small invisible pathfinder supports click/tap movement without route lines or water shortcuts.
 - CSS uses the same sheets in combat and UI portraits, with matching gold/jade panels, health bars, damage numbers, lunges, and spell effects.
 - Reduced-motion preferences suppress decorative motion. Sound effects are synthesized locally and opt-in.
 - The garden contains two respawning guardians, one gated respawning boss, five collectibles per expedition, a camp shop and upgrade bench, and 20 expedition difficulty levels. The original builder-to-exploration-to-turn-based-battle loop is preserved.

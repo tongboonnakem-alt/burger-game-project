@@ -27,11 +27,12 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
     return saved && saved.profile.name === name && JSON.stringify(saved.profile.selected) === JSON.stringify(selected) ? saved.progress : initialProgress(score);
   });
   const [battle, setBattle] = useState<Battle | null>(null);
-  const [intro, setIntro] = useState(true), [paused, setPaused] = useState(false), [sound, setSound] = useState(false);
+  const [intro, setIntro] = useState(true), [paused, setPaused] = useState(false), [sound, setSound] = useState(true);
   const [position, setPosition] = useState(CAMP), [respawn, setRespawn] = useState(0), [toast, setToast] = useState('');
   const [saved, setSaved] = useState(true);
   const [campOpen,setCampOpen] = useState(false), [running,setRunning] = useState(false);
   const [loot,setLoot] = useState<Loot|null>(null);
+  const [taunt,setTaunt] = useState('');
   const [musicVolume,setMusicVolume] = useState(readMusicVolume);
   const audio = useRef<AudioContext | null>(null), mapMusic = useRef<HTMLAudioElement | null>(null), reward = useRef<number | null>(null);
   const maxHp = maxHealth(score,progress), allClear = progress.defeated.length === 3;
@@ -55,9 +56,26 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
         gain.gain.setValueAtTime(.0001, start); gain.gain.exponentialRampToValueAtTime(.075, start + .01); gain.gain.exponentialRampToValueAtTime(.0001, start + .24);
         oscillator.connect(gain); gain.connect(context.destination); oscillator.start(start); oscillator.stop(start + .25);
       });
+      if (type === 'hit') {
+        const buffer = context.createBuffer(1, Math.floor(context.sampleRate * .13), context.sampleRate), data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        const smack = context.createBufferSource(), smackGain = context.createGain(), filter = context.createBiquadFilter();
+        smack.buffer = buffer; filter.type = 'bandpass'; filter.frequency.value = 760; filter.Q.value = .8;
+        smackGain.gain.setValueAtTime(.16, context.currentTime); smackGain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .13);
+        smack.connect(filter); filter.connect(smackGain); smackGain.connect(context.destination); smack.start();
+      }
     } catch { /* Sound is optional when the browser blocks audio. */ }
   };
-  useEffect(() => () => { void audio.current?.close(); }, []);
+  const monsterTaunt = () => {
+    const line = 'แกไม่รอดนี่ คุณอีสาน!';
+    setTaunt(line);
+    if (!sound || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const voice = new SpeechSynthesisUtterance(line);
+    voice.lang = 'th-TH'; voice.rate = .82; voice.pitch = .62; voice.volume = .9;
+    window.speechSynthesis.speak(voice);
+  };
+  useEffect(() => () => { void audio.current?.close(); window.speechSynthesis?.cancel(); }, []);
   useEffect(() => {
     const player = mapMusic.current;
     if (!player) return;
@@ -102,7 +120,7 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
   const choose = (action: Action) => {
     if (paused || intro) return;
     setBattle(b => b ? playerTurn(b, action, score, progress) : b);
-    chime(action === 'potion' ? 'heal' : 'click');
+    chime(action === 'potion' ? 'heal' : action === 'attack' || action === 'special' ? 'hit' : 'click');
   };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -129,7 +147,7 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
   return <main className={`ember-game path-${progress.path} ${battle ? 'in-battle' : ''}`} style={{ '--hero-filter': heroFilter,'--class-color':path.color,'--skill-glow':`${18+progress.skills[progress.path]*3}px` } as CSSProperties}>
     <audio ref={mapMusic} src="/audio/glorious-morning.mp3" loop preload="auto" />
     <EmberWorld key={progress.floor} progress={progress} suspended={suspended} respawn={respawn} tint={heroTint} running={running} onRun={()=>setRunning(v=>!v)} onCollect={collect} onPosition={setPosition} onNotice={notify}
-      onEncounter={id => { if (suspended || progress.readyAt[id]>Date.now()) return; reward.current=null;setLoot(null); setBattle(beginBattle(id, progress)); chime('click'); }} />
+      onEncounter={id => { if (suspended || progress.readyAt[id]>Date.now()) return; reward.current=null;setLoot(null); monsterTaunt(); setBattle(beginBattle(id, progress)); chime('click'); }} />
     <div className="ember-vignette" />
     <header className="ember-top">
       <div className="ember-brand"><span className="ember-emblem">✦</span><div><small>BURGER ORBIT</small><b>สวนเตาไฟ</b></div><span className="ember-chapter">รอบสำรวจ {progress.floor}</span></div>
@@ -158,6 +176,7 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
       <div className="ember-round"><small>ENCOUNTER {battle.enemy+1} / 3</small><b>{battle.phase === 'won' ? 'ได้รับชัยชนะ' : battle.phase === 'lost' ? 'การเดินทางยังไม่จบ' : `เทิร์นที่ ${battle.round}`}</b></div>
       <div className={`ember-combat-card player tier-${tierOf(level)}`}><Portrait/><div><small>LV.{level} · {path.role}</small><b>{name}</b><Health value={battle.phase === 'won' ? progress.hp : battle.hp} max={maxHp}/></div><GearBadge gear={equipped(progress,'weapon')}/></div>
       <div className="ember-combat-card foe"><Portrait enemy={battle.enemy}/><div><small>{foe.title} · รอบ {progress.floor}</small><b>{foe.name}</b><Health value={battle.enemyHp} max={battle.maxEnemyHp} enemy/></div></div>
+      {taunt && battle.round === 1 && <div className="ember-foe-taunt" role="status">{taunt}</div>}
       <div className={`ember-combatant player ${battle.phase==='strike' && battle.damage ? 'striking' : ''} ${battle.received && battle.phase==='choose' ? 'hurt' : ''}`} key={`player-${battle.round}`}><div className="ember-ground-shadow"/><Portrait frame={battle.phase==='strike'?1:0}/>{battle.guard && <span className="ember-shield">◇</span>}{battle.received > 0 && <b className="ember-number damage">−{battle.received}</b>}{battle.heal > 0 && <b className="ember-number heal">+{battle.heal}</b>}</div>
       <div className={`ember-combatant foe ${battle.phase==='enemy'?'striking':''} ${battle.phase==='won'?'defeated':''}`} key={`foe-${battle.round}`}><div className="ember-ground-shadow"/><Portrait enemy={battle.enemy} frame={battle.phase==='strike' && battle.damage || battle.phase==='won' ? 3 : battle.phase==='enemy'?2:0}/>{battle.damage>0 && <b className="ember-number damage" key={`damage-${battle.round}`}>−{battle.damage}</b>}</div>
       {battle.phase==='strike' && battle.move==='special' && <div className="ember-special" key={battle.round}>{path.icon}</div>}

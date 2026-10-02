@@ -1,13 +1,13 @@
 import type { Category, Ingredient, ScoreResult } from './types';
 
 export const ART = '/quest-art/';
-export const CAMP = { x: 746, y: 823 };
+export const CAMP = { x: 768, y: 830 };
 export const ENEMIES = [
-  { id: 0, name: 'อัศวินกระเทียม', title: 'ผู้พิทักษ์สะพาน', x: 543, y: 581, hp: 86, attack: 13, xp: 40 },
-  { id: 1, name: 'จอมโจรมันฝรั่ง', title: 'นักล่าแห่งธารคราม', x: 1160, y: 586, hp: 112, attack: 16, xp: 60 },
-  { id: 2, name: 'ราชินีมะเขือม่วง', title: 'ผู้ครองเตาไฟโบราณ', x: 1190, y: 269, hp: 164, attack: 21, xp: 120 },
+  { id: 0, name: 'อัศวินกระเทียม', title: 'ผู้พิทักษ์ทางตะวันตก', x: 342, y: 494, hp: 86, attack: 13, xp: 40 },
+  { id: 1, name: 'จอมโจรมันฝรั่ง', title: 'นักล่าแห่งทางตะวันออก', x: 1138, y: 548, hp: 112, attack: 16, xp: 60 },
+  { id: 2, name: 'ราชินีมะเขือม่วง', title: 'ผู้ครองครัวเตาไฟ', x: 1198, y: 246, hp: 164, attack: 21, xp: 120 },
 ] as const;
-export const CRYSTALS = [{ x: 620, y: 680 }, { x: 888, y: 654 }, { x: 1090, y: 462 }, { x: 603, y: 308 }, { x: 888, y: 235 }];
+export const CRYSTALS = [{ x: 675, y: 654 }, { x: 925, y: 630 }, { x: 1085, y: 580 }, { x: 410, y: 335 }, { x: 906, y: 174 }];
 export type Profile = { name: string; score: ScoreResult; selected: Partial<Record<Category, Ingredient>> };
 export type PathId = 'blade' | 'storm' | 'life' | 'ward';
 export const PATHS = [
@@ -146,15 +146,15 @@ export function advanceExpedition(p: Progress, score: ScoreResult): Progress {
   return {...p,floor:p.floor+1,defeated:[],readyAt:[0,0,0],collected:[],hp:maxHealth(score,p)};
 }
 
-// Corridors are traced over the illustrated paths, bridges and camp, in map pixels.
+// Corridors follow only the broad ochre roads in garden-v2.png. Water and scenery sit outside this network.
 export const ROUTES: number[][] = [
-  [746,823,825,787,860,696,850,661], [850,661,716,677,635,692,550,635,543,581,510,519,480,444,523,375,570,333,635,285,662,239,665,211],
-  [850,661,985,657,1080,647,1156,608,1160,586,1115,535,1110,489,1090,462,1165,429,1240,400],
-  [1240,400,1150,377,1060,341,993,306,922,265,843,223,752,212,665,211],
-  [993,306,1065,278,1110,255,1190,269,1240,260], [665,211,604,172,563,121,500,87],
-  [850,661,875,606,877,561,868,520], [550,635,477,674,434,699,375,674], [570,333,473,352,398,365,341,340,275,322,190,310],
+  [768,830,768,748,768,680,768,625],
+  [768,625,650,625,540,610,445,570,375,525,342,494,305,445],
+  [305,445,330,385,400,335,490,285,585,225,680,184,768,170],
+  [768,625,895,625,1000,606,1080,575,1138,548,1190,500,1225,430,1240,360],
+  [1240,360,1228,300,1198,246,1105,210,1000,182,885,170,768,170],
 ];
-export const WALK_RADIUS = 38;
+export const WALK_RADIUS = 34;
 export function canWalk(x: number, y: number): boolean {
   if (Math.hypot(x - CAMP.x, y - CAMP.y) < 82) return true;
   return ROUTES.some(route => {

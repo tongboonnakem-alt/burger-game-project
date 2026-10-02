@@ -105,7 +105,7 @@ async function run() {
     assert.ok([...visited].some(id => Math.hypot(point(id).x-target.x,point(id).y-target.y)<20), `Unreachable target ${target.x},${target.y}`);
   }
   assert.equal(canWalk(0,0), false, 'Map exterior is not walkable');
-  assert.equal(canWalk(570,363), true, 'Widened route keeps a 30px shoulder around bends');
+  assert.equal(canWalk(800,625), true, 'Wide road keeps a safe shoulder around the central junction');
 
   const storage = global.localStorage;
   try {
