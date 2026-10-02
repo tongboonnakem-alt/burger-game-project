@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: burger-game-project
+    runtime: node
+    repo: https://github.com/tongboonnakem-alt/burger-game-project
+    branch: main
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/burgers
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+
