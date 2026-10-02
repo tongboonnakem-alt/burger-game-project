@@ -83,7 +83,7 @@ export default function EmberCamp({progress:p,score,atCamp,onChange,onClose}:{pr
   const total=rates.weights.reduce((a,b)=>a+b,0);
   const forgeGear=p.inventory.find(gear=>gear.id===forgeId);
   const totalOres=Object.values(p.ores).reduce((sum,count)=>sum+count,0);
-  return <div className="ember-modal-wrap ember-camp-wrap"><section className="ember-camp ember-rpg-window" role="dialog" aria-modal="true" aria-label="กระเป๋าและพัฒนาตัวละคร">
+  return <div className="ember-modal-wrap ember-camp-wrap"><section className={`ember-camp ember-rpg-window ${forgeGear?'forge-open':''}`} role="dialog" aria-modal="true" aria-label="กระเป๋าและพัฒนาตัวละคร">
     <header className="ember-camp-heading"><div><small>WARMHEARTH ADVENTURER SERVICE</small><h2>คลังนักผจญภัย</h2></div><span className="ember-window-seal">BO</span><button onClick={onClose} aria-label="ปิดกระเป๋า">×</button></header>
     <div className="ember-wallet"><span>◎ <b>{p.gold}</b> เหรียญ</span><span>◆ <b>{totalOres}</b> แร่ตีบวก</span><span>✧ <b>{p.essence}</b> ผลึกสกิล</span><span className={`ember-level tier-${tierOf(level)}`}>LV.{level}{level===20?' ★ MAX':' / 20'}</span></div>
     <div className="ember-camp-summary"><span style={{color:path.color}}>{path.icon} {path.role} · โจมตี {heroAttack(score,p)} · HP {maxHealth(score,p)}</span><span>{level===20?'ถึงขีดสุดแล้ว':`${p.xp-xpForLevel(level)} / ${xpForLevel(level+1)-xpForLevel(level)} XP`}</span></div>
