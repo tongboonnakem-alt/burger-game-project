@@ -67,7 +67,7 @@ export default function EmberQuest({ name, score, selected, onExit }: Profile & 
     } catch { /* Sound is optional when the browser blocks audio. */ }
   };
   const monsterTaunt = () => {
-    const line = 'แกไม่รอดนี่ คุณอีสาน!';
+    const line = 'แกไม่รอดแน่คนอีสาน!';
     setTaunt(line);
     if (!sound || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();

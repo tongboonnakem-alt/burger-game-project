@@ -29,7 +29,7 @@ The following briefs record the creative direction used for the four generation 
 ## Integration
 
 - Phaser draws the environment, directional animations, contact shadows, encounter rings, collectibles, and drifting light motes.
-- Collision corridors follow the center of the broad illustrated roads. A small invisible pathfinder supports click/tap movement without route lines or water shortcuts.
+- Collision uses broad free-roam zones over the illustrated roads, plazas and side bridges, with separate blockers over water, cliffs, the oven shrine and camp props. The invisible pathfinder supports click/tap travel without route lines or water shortcuts.
 - CSS uses the same sheets in combat and UI portraits, with matching gold/jade panels, health bars, damage numbers, lunges, and spell effects.
 - Reduced-motion preferences suppress decorative motion. Sound effects are synthesized locally and opt-in.
 - The garden contains two respawning guardians, one gated respawning boss, five collectibles per expedition, a camp shop and upgrade bench, and 20 expedition difficulty levels. The original builder-to-exploration-to-turn-based-battle loop is preserved.

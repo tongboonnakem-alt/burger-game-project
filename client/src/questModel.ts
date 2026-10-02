@@ -1,13 +1,13 @@
 import type { Category, Ingredient, ScoreResult } from './types';
 
 export const ART = '/quest-art/';
-export const CAMP = { x: 768, y: 830 };
+export const CAMP = { x: 768, y: 900 };
 export const ENEMIES = [
-  { id: 0, name: 'อัศวินกระเทียม', title: 'ผู้พิทักษ์ทางตะวันตก', x: 342, y: 494, hp: 86, attack: 13, xp: 40 },
-  { id: 1, name: 'จอมโจรมันฝรั่ง', title: 'นักล่าแห่งทางตะวันออก', x: 1138, y: 548, hp: 112, attack: 16, xp: 60 },
-  { id: 2, name: 'ราชินีมะเขือม่วง', title: 'ผู้ครองครัวเตาไฟ', x: 1198, y: 246, hp: 164, attack: 21, xp: 120 },
+  { id: 0, name: 'อัศวินกระเทียม', title: 'ผู้พิทักษ์ทางตะวันตก', x: 360, y: 385, hp: 86, attack: 13, xp: 40 },
+  { id: 1, name: 'จอมโจรมันฝรั่ง', title: 'นักล่าแห่งทางตะวันออก', x: 1160, y: 480, hp: 112, attack: 16, xp: 60 },
+  { id: 2, name: 'ราชินีมะเขือม่วง', title: 'ผู้ครองครัวเตาไฟ', x: 1240, y: 270, hp: 164, attack: 21, xp: 120 },
 ] as const;
-export const CRYSTALS = [{ x: 675, y: 654 }, { x: 925, y: 630 }, { x: 1085, y: 580 }, { x: 410, y: 335 }, { x: 906, y: 174 }];
+export const CRYSTALS = [{ x: 650, y: 620 }, { x: 910, y: 620 }, { x: 1060, y: 550 }, { x: 470, y: 260 }, { x: 900, y: 180 }];
 export type Profile = { name: string; score: ScoreResult; selected: Partial<Record<Category, Ingredient>> };
 export type PathId = 'blade' | 'storm' | 'life' | 'ward';
 export const PATHS = [
@@ -146,23 +146,41 @@ export function advanceExpedition(p: Progress, score: ScoreResult): Progress {
   return {...p,floor:p.floor+1,defeated:[],readyAt:[0,0,0],collected:[],hp:maxHealth(score,p)};
 }
 
-// Corridors follow only the broad ochre roads in garden-v2.png. Water and scenery sit outside this network.
-export const ROUTES: number[][] = [
-  [768,830,768,748,768,680,768,625],
-  [768,625,650,625,540,610,445,570,375,525,342,494,305,445],
-  [305,445,330,385,400,335,490,285,585,225,680,184,768,170],
-  [768,625,895,625,1000,606,1080,575,1138,548,1190,500,1225,430,1240,360],
-  [1240,360,1228,300,1198,246,1105,210,1000,182,885,170,768,170],
+type WalkLane = { radius: number; points: number[] };
+type WalkZone = { x: number; y: number; rx: number; ry: number };
+// These are broad playable surfaces, not guide rails. Their widths are inset from the visible road edges
+// so the hero can roam freely while still colliding with water, cliffs and dense scenery.
+export const WALK_LANES: WalkLane[] = [
+  { radius: 68, points: [768,900,768,820,768,730,768,640,650,620,535,585,440,525,370,455,340,385,390,320,470,265,560,205,660,175,780,180] },
+  { radius: 68, points: [780,180,900,180,1010,195,1110,220,1200,250,1240,270,1250,350,1220,415,1160,480,1090,545,1000,595,900,620,768,640] },
+  { radius: 29, points: [370,360,300,320,230,295,155,285] },
+  { radius: 31, points: [520,590,455,625,385,650,315,650,235,625,155,615] },
+  { radius: 31, points: [1010,595,1070,625,1140,650,1215,665,1290,650] },
 ];
-export const WALK_RADIUS = 34;
+export const WALK_ZONES: WalkZone[] = [
+  { x:768,y:850,rx:126,ry:92 },
+  { x:768,y:610,rx:330,ry:72 },
+  { x:360,y:385,rx:102,ry:84 },
+  { x:780,y:180,rx:215,ry:72 },
+  { x:1160,y:465,rx:105,ry:92 },
+  { x:1210,y:265,rx:150,ry:78 },
+];
+const BLOCKED_ZONES: WalkZone[] = [
+  { x:768,y:390,rx:225,ry:155 },
+  { x:835,y:795,rx:72,ry:43 },
+  { x:690,y:792,rx:44,ry:38 },
+  { x:768,y:838,rx:24,ry:20 },
+];
+function nearLane(x: number, y: number, lane: WalkLane): boolean {
+  for (let i = 0; i < lane.points.length - 2; i += 2) {
+    const ax = lane.points[i], ay = lane.points[i + 1], dx = lane.points[i + 2] - ax, dy = lane.points[i + 3] - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < lane.radius) return true;
+  }
+  return false;
+}
+const inZone = (x: number, y: number, zone: WalkZone) => ((x-zone.x)/zone.rx)**2 + ((y-zone.y)/zone.ry)**2 < 1;
 export function canWalk(x: number, y: number): boolean {
-  if (Math.hypot(x - CAMP.x, y - CAMP.y) < 82) return true;
-  return ROUTES.some(route => {
-    for (let i = 0; i < route.length - 2; i += 2) {
-      const ax = route[i], ay = route[i + 1], dx = route[i + 2] - ax, dy = route[i + 3] - ay;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
-      if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < WALK_RADIUS) return true;
-    }
-    return false;
-  });
+  if (BLOCKED_ZONES.some(zone=>inZone(x,y,zone))) return false;
+  return WALK_ZONES.some(zone=>inZone(x,y,zone)) || WALK_LANES.some(lane=>nearLane(x,y,lane));
 }
