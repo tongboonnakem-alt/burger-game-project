@@ -86,19 +86,26 @@ async function run() {
 
   // Every encounter and collectible must be reachable from camp on the actual
   // movement grid. This catches isolated corridors and map-coordinate mistakes.
-  const step = 12, cols = 128, rows = 85;
+  const step = 10, cols = 154, rows = 103;
   const cells = new Set();
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (canWalk(x * step, y * step)) cells.add(y * cols + x);
   const point = id => ({ x: id % cols * step, y: Math.floor(id / cols) * step });
   const origin = [...cells].reduce((best,id) => Math.hypot(point(id).x-CAMP.x,point(id).y-CAMP.y) < Math.hypot(point(best).x-CAMP.x,point(best).y-CAMP.y) ? id : best);
   const queue = [origin], visited = new Set(queue);
-  for (let i = 0; i < queue.length; i++) for (const next of [queue[i]-1,queue[i]+1,queue[i]-cols,queue[i]+cols]) {
-    if (cells.has(next) && !visited.has(next)) { visited.add(next); queue.push(next); }
+  for (let i = 0; i < queue.length; i++) {
+    const current=queue[i],cx=current%cols,cy=Math.floor(current/cols);
+    for(const [ox,oy] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]]){
+      const nx=cx+ox,ny=cy+oy;if(nx<0||nx>=cols||ny<0||ny>=rows)continue;
+      const next=ny*cols+nx;
+      if(ox&&oy&&(!cells.has(cy*cols+nx)||!cells.has(ny*cols+cx)))continue;
+      if(cells.has(next)&&!visited.has(next)){visited.add(next);queue.push(next);}
+    }
   }
   for (const target of [...ENEMIES, ...CRYSTALS]) {
     assert.ok([...visited].some(id => Math.hypot(point(id).x-target.x,point(id).y-target.y)<20), `Unreachable target ${target.x},${target.y}`);
   }
   assert.equal(canWalk(0,0), false, 'Map exterior is not walkable');
+  assert.equal(canWalk(570,363), true, 'Widened route keeps a 30px shoulder around bends');
 
   const storage = global.localStorage;
   try {

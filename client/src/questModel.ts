@@ -154,13 +154,14 @@ export const ROUTES: number[][] = [
   [993,306,1065,278,1110,255,1190,269,1240,260], [665,211,604,172,563,121,500,87],
   [850,661,875,606,877,561,868,520], [550,635,477,674,434,699,375,674], [570,333,473,352,398,365,341,340,275,322,190,310],
 ];
+export const WALK_RADIUS = 38;
 export function canWalk(x: number, y: number): boolean {
-  if (Math.hypot(x - CAMP.x, y - CAMP.y) < 65) return true;
+  if (Math.hypot(x - CAMP.x, y - CAMP.y) < 82) return true;
   return ROUTES.some(route => {
     for (let i = 0; i < route.length - 2; i += 2) {
       const ax = route[i], ay = route[i + 1], dx = route[i + 2] - ax, dy = route[i + 3] - ay;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
-      if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < 25) return true;
+      if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < WALK_RADIUS) return true;
     }
     return false;
   });
