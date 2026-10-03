@@ -4,12 +4,13 @@ import { ART, ORES, PATHS, RARITIES, SHOP, advanceExpedition, attemptEnhancement
 
 export function GearBadge({gear}:{gear?:Gear}) {
   const column=Math.max(0,PATHS.findIndex(path=>path.id===gear?.affinity));
-  return <span className={`ember-gear-icon tier-${tierOf(gear?.upgrade||0)}`} style={{color:RARITIES.find(r=>r.id===gear?.rarity)?.color}}><span className="ember-equipment-art" style={{backgroundPosition:`${column*100/3}% ${gear?.slot==='armor'?100:0}%`}}/>{gear&&gear.upgrade>=5&&<i>{'★'.repeat(Math.floor(gear.upgrade/5))}</i>}</span>;
+  const row=gear?.slot==='armor'?1:0;
+  return <span className={`ember-gear-icon tier-${tierOf(gear?.upgrade||0)}`} style={{color:RARITIES.find(r=>r.id===gear?.rarity)?.color}}><span className="ember-equipment-frame"><img aria-hidden="true" src="/quest-art/equipment-atlas.png" style={{width:'400%',height:'200%',left:`-${column*100}%`,top:`-${row*100}%`}}/></span>{gear&&gear.upgrade>=5&&<i>{'★'.repeat(Math.floor(gear.upgrade/5))}</i>}</span>;
 }
 
 function OreIcon({ore}:{ore:Ore}) {
   const column=['blade','storm','life','ward','universal'].indexOf(ore.path);
-  return <span className="ember-ore-icon" style={{backgroundPosition:`${column*25}% ${(ore.tier-1)*100/9}%`}}/>;
+  return <span className="ember-ore-icon" style={{'--ore-color':ore.color} as CSSProperties}><span className="ember-ore-frame"><img aria-hidden="true" src="/quest-art/ore-icons.png" style={{width:'500%',height:'1000%',left:`-${column*100}%`,top:`-${(ore.tier-1)*100}%`}}/></span></span>;
 }
 
 function ForgePanel({gear,progress,onChange,onClose}:{gear:Gear;progress:Progress;onChange:Dispatch<SetStateAction<Progress>>;onClose:()=>void}) {
