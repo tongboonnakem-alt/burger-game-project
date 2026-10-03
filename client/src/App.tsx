@@ -98,7 +98,7 @@ export default function App() {
   const progress = (Object.keys(selected).length / categoryOrder.length) * 100;
 
   if (questMode && score) {
-    return <Suspense fallback={<main className="quest-loading"><span>BURGER ORBIT</span><b>กำลังเปิดแผนที่ผจญภัย…</b></main>}><BurgerQuest name={name} score={score} selected={selected} onExit={() => { setQuestMode(false); }} /></Suspense>;
+    return <Suspense fallback={<main className="quest-loading" role="status" aria-live="polite"><div><span>BURGER ORBIT</span><b>การเข้าเซิร์ฟเวอร์รอบแรกอาจจะนานหน่อย<br/>แต่เข้ารอบต่อไปก็นานเหมือนกัน กรุณารอสักครู่</b></div></main>}><BurgerQuest name={name} score={score} selected={selected} onExit={() => { setQuestMode(false); }} /></Suspense>;
   }
 
   return (
